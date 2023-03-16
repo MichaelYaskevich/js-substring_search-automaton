@@ -1,115 +1,106 @@
 let fs = require('fs');
 let arg = process.argv;
-let i = 0;
-let strLen;
-let subStrLen;
-let len;
-let res = "";
-let previous;
-let alphabit;
 let str;
-let subStr;
-let curState;
-let resArray;
+let substr;
+let res_array;
 
-function read(inFile) {
+function read(input_file) {
     try {
-        inText = fs.readFileSync(inFile, "utf-8");
-        return inText;
+        return fs.readFileSync(input_file, "utf-8");
     }
     catch (e) {
         return undefined;
     }
 }
 
-function ShowTable(jumpTable, alphabit, subStrLen) {
-    res = "";
-    len = jumpTable.length;
-    let maxLen = String(subStrLen).length;
-    for (j = -1; j < len; j++) {
-        if (j == -1) {
-            res = "";
-            for (let i = 0; i < maxLen + 1; i++)
+function showTable(jump_table, alphabit, substr_len) {
+    // Выводит таблицу переходов ДКА.
+    let res = "";
+    let len = jump_table.length;
+    // На случай если длина подстроки имеет несколько знаков, вычисляем shift
+    let shift = String(substr_len).length;
+    for (let row = -1; row < len; row++) {
+        if (row == -1) {
+            for (let i = 0; i < shift + 1; i++)
                 res += " ";
-            for (key in alphabit) {
-                let spacesCount = maxLen - key.length + 1;
+            for (const col of alphabit.keys()) {
+                let spacesCount = shift - col.length + 1;
                 let space = "";
                 for (let i = 0; i < spacesCount; i++)
                     space += " ";
-                res += key + space;
+                res += col + space;
             }    
             console.log(res);
         }
         else {
-            res = `${j})`;
-            let spacesCount = maxLen - res.length + 1;
+            res = `${row})`;
+            let spacesCount = shift - res.length + 1;
             let space = "";
             for (let i = 0; i < spacesCount; i++)
                 space += " ";
             res += space;
-            for (i in alphabit) {
-                let spacesCount = maxLen - String(jumpTable[j][i]).length + 1;
+            for (const col of alphabit.keys()) {
+                let spacesCount = shift - String(jump_table[row][col]).length + 1;
                 let space = "";
                 for (let i = 0; i < spacesCount; i++)
                     space += " ";
-                res += jumpTable[j][i] + space;
+                res += jump_table[row][col] + space;
             }    
             console.log(res);
         }
     }
 }
 
-function MakeJumpTable(subStr, alphabit) {
-    subStrLen = subStr.length;
-    let jumpTable = new Array(subStrLen + 1);
-    for (j = 0; j <= subStrLen; j++)
-        jumpTable[j] = new Array();
-    for (i in alphabit)
-        jumpTable[0][i] = 0;
-    for (j = 0; j < subStrLen; j++) {
-        previous = jumpTable[j][subStr.charAt(j)];
-        jumpTable[j][subStr.charAt(j)] = j + 1;
-        for (i in alphabit)
-            jumpTable[j + 1][i] = jumpTable[previous][i];
+function makeJumpTable(substr, alphabit) {
+    // Строим таблицу переходов ДКА.
+    // Состояния - префиксы, включая пустой и всю строку
+    // Алфавит - алфавит подстроки и * для символа вне алфавита
+    let substr_len = substr.length;
+    let jump_table = new Array(substr_len + 1);
+    for (j = 0; j <= substr_len; j++)
+        jump_table[j] = new Array();
+    for (const i of alphabit.keys())
+        jump_table[0][i] = 0;
+    let previous;
+    for (j = 0; j < substr_len; j++) {
+        // previous - номер строки таблицы перехода, для префикса, являющегося наибольшим суффиксом накопленной на шаге j строки
+        previous = jump_table[j][substr.charAt(j)];
+        jump_table[j][substr.charAt(j)] = j + 1;
+        for (const i of alphabit.keys())
+            jump_table[j + 1][i] = jump_table[previous][i];
     }
 
-    return jumpTable;
+    return jump_table;
 }
 
-function MakeAlphabit(subStr) {
-    alphabit = new Array();
-    subStrLen = subStr.length;
-    for (i = 0; i < subStrLen; i++)
-        alphabit[subStr.charAt(i)] = 0;
+function makeAlphabit(substr) {
+    let alphabit = new Set()
+    let substr_len = substr.length
+    for (let i = 0; i < substr_len; i++)
+        alphabit.add(substr.charAt(i));
     return alphabit
 }
 
-function TurnOnTheAutomat(strFile, subStrFile) {
-    str = read(strFile);
-    if (str == undefined || str == "")
-        return undefined;
-    subStr = read(subStrFile);
-    if (subStr == undefined || subStr == "")
-        return undefined;
-    strLen = str.length;
-    subStrLen = subStr.length;
-    alphabit = MakeAlphabit(subStr);
-    jumpTable = MakeJumpTable(subStr, alphabit);
-    curState = 0;
-    resArray = new Array();
-    i = 0;
+function turnOnTheAutomat(str, substr) {
+    let str_len = str.length;
+    let substr_len = substr.length;
+    let alphabit = makeAlphabit(substr);
+    let jump_table = makeJumpTable(substr, alphabit);
+    let cur_state = 0;
+    let res_array = new Array();
+    let i = 0;
 
     const start = new Date().getTime();
-    while (i < strLen) {
-        if (jumpTable[curState][str.charAt(i)] == undefined) {
-            curState = 0;
+    while (i < str_len) {
+        if (jump_table[cur_state][str.charAt(i)] == undefined) {
+            cur_state = 0;
         }
         else {
-            curState = jumpTable[curState][str.charAt(i)]
+            cur_state = jump_table[cur_state][str.charAt(i)]
         }
-        if (curState == subStrLen) {
-            resArray[resArray.length] = i - subStrLen + 1;
-            if (howManyEntriesShow == resArray.length)
+        if (cur_state == substr_len) {
+            res_array[res_array.length] = i - substr_len + 1;
+            if (count_of_entries == res_array.length)
                 break;
         }
         i++;
@@ -117,45 +108,50 @@ function TurnOnTheAutomat(strFile, subStrFile) {
     const end = new Date().getTime();
 
     if (time == true) console.log(`WorkTime: ${end - start}ms`);
-    if (showTable == true) ShowTable(jumpTable, alphabit, subStrLen);
+    if (show_table == true) showTable(jump_table, alphabit, substr_len);
 
-    return resArray;
+    return res_array;
 }
 
-let flagsCount = 0;
-let howManyEntriesShow;
+let flags_count = 0;
+let count_of_entries;
 let time = false;
-let showTable = false;
-function CheckFlags() {
-    if (arg[2 + flagsCount] == "-a") {
-        flagsCount++;
-        showTable = true;
-        CheckFlags();
+let show_table = false;
+function checkFlags() {
+    if (arg[2 + flags_count] == "-a") {
+        flags_count++;
+        show_table = true;
+        checkFlags();
     }
-    else if (arg[2 + flagsCount] == "-n") {
-        howManyEntriesShow = arg[2 + flagsCount + 1];
-        flagsCount++;
-        flagsCount++;
-        CheckFlags();
+    else if (arg[2 + flags_count] == "-n") {
+        count_of_entries = arg[2 + flags_count + 1];
+        flags_count++;
+        flags_count++;
+        checkFlags();
     }
-    else if (arg[2 + flagsCount] == "-t") {
-        flagsCount++;
+    else if (arg[2 + flags_count] == "-t") {
+        flags_count++;
         time = true;
-        CheckFlags();
+        checkFlags();
     }
 }
-CheckFlags();
+checkFlags();
 
-if (howManyEntriesShow == undefined || howManyEntriesShow > 0)
-    resArray = TurnOnTheAutomat(arg[2 + flagsCount], arg[3 + flagsCount]);
-
-if (resArray == undefined) console.log("One of the files is empty or not exit");
-else if (howManyEntriesShow == undefined || howManyEntriesShow > 0) {
+if (count_of_entries == undefined || count_of_entries > 0) {
+    str = read(arg[2 + flags_count]);
+    substr = read(arg[3 + flags_count]);
+    if (str == undefined || str == "" || substr == undefined || substr == "")
+        res_array = undefined;
+    else
+        res_array = turnOnTheAutomat(str, substr);
+}
+if (res_array == undefined) console.log("One of the files is empty or not exit");
+else if (count_of_entries == undefined || count_of_entries > 0) {
     console.log("------First n entries-----");
-    if (howManyEntriesShow == undefined || howManyEntriesShow > resArray.length)
-        howManyEntriesShow = resArray.length;
-    for (let i = 0; i < howManyEntriesShow; i++) {
-        console.log(`|            ${resArray[i]}           |`);
+    if (count_of_entries == undefined || count_of_entries > res_array.length)
+        count_of_entries = res_array.length;
+    for (let i = 0; i < count_of_entries; i++) {
+        console.log(`|            ${res_array[i]}           |`);
     }
     console.log("--------------------------");
 }
